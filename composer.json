@@ -1,0 +1,40 @@
+{
+    "name": "kcs/stream",
+    "description": "PHP stream interfaces and basic implementations",
+    "type": "library",
+    "minimum-stability": "stable",
+    "authors": [
+        {
+            "name": "Alessandro Chitolina",
+            "email": "alekitto@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "symfony/polyfill-php80": "^1.0"
+    },
+    "require-dev": {
+        "ext-curl": "*",
+        "phpunit/phpunit": "^9.5",
+        "roave/security-advisories": "dev-master",
+        "solido/php-coding-standards": "dev-master",
+        "symfony/process": "^4.4 || ^5.0",
+        "thecodingmachine/safe": "^1.1"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Kcs\\Stream\\": "lib/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "phpstan": "phpstan analyse lib/ -c ./phpstan.neon --level=8 --no-progress -vvv --memory-limit=2048M",
+        "cscheck": "vendor/bin/phpcs --standard=Solido lib/",
+        "csfix": "vendor/bin/phpcbf --standard=Solido lib/"
+    }
+}
