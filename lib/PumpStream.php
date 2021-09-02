@@ -42,6 +42,7 @@ class PumpStream implements ReadableStream
     {
         $result = '';
         while (! $this->eof()) {
+            /** @infection-ignore-all */
             $result .= $this->read(1000000);
         }
 
