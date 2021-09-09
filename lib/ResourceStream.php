@@ -10,6 +10,7 @@ use Kcs\Stream\Exception\StreamClosedException;
 
 use function fclose;
 use function feof;
+use function filesize;
 use function fread;
 use function fseek;
 use function fwrite;
@@ -29,6 +30,7 @@ class ResourceStream implements Duplex
     private bool $readable;
     private bool $writable;
     private bool $closed;
+    private ?int $fileSize;
 
     /** @var resource */
     private $resource;
@@ -52,6 +54,9 @@ class ResourceStream implements Duplex
         $this->resource = $resource;
         $this->closed = false;
 
+        $size = @filesize($metadata['uri']);
+        $this->fileSize = $size === false ? null : $size;
+
         $this->readable = (bool) preg_match('/[r+]/', $metadata['mode']);
         $this->writable = (bool) preg_match('/[wacx+]/', $metadata['mode']);
     }
@@ -60,6 +65,11 @@ class ResourceStream implements Duplex
     {
         fclose($this->resource);
         $this->closed = true;
+    }
+
+    public function length(): ?int
+    {
+        return $this->fileSize;
     }
 
     public function eof(): bool

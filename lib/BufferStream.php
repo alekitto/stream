@@ -30,6 +30,11 @@ final class BufferStream implements Duplex
         $this->buffer = '';
     }
 
+    public function length(): ?int
+    {
+        return strlen($this->buffer);
+    }
+
     public function isReadable(): bool
     {
         return true;

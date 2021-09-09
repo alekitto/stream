@@ -12,6 +12,11 @@ interface ReadableStream extends Stream
     public function eof(): bool;
 
     /**
+     * The total length of the stream (if known).
+     */
+    public function length(): ?int;
+
+    /**
      * Reads bytes from the stream.
      */
     public function read(int $length): string;
