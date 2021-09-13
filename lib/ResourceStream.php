@@ -18,6 +18,7 @@ use function fwrite;
 use function get_debug_type;
 use function get_resource_type;
 use function is_resource;
+use function min;
 use function preg_match;
 use function sprintf;
 use function stream_get_meta_data;
@@ -99,10 +100,18 @@ class ResourceStream implements Duplex
         }
 
         $remaining = $length - $this->buffer->length();
-        $content = fread($this->resource, $remaining);
-        /** @infection-ignore-all */
-        if ($content === false) {
-            return $this->buffer->read($length);
+
+        $content = '';
+        for (; $remaining > 0; $remaining -= 4096) {
+            $bytes = min($remaining, 4096);
+            $chunk = fread($this->resource, $bytes);
+
+            /** @infection-ignore-all */
+            if ($chunk === false) {
+                break;
+            }
+
+            $content .= $chunk;
         }
 
         $this->eof = feof($this->resource);
@@ -144,7 +153,8 @@ class ResourceStream implements Duplex
             return $buffer->read($length);
         }
 
-        $content = fread($this->resource, $length);
+        $length = $position + $length >= $this->fileSize ? $this->fileSize - $position : $length;
+        $content = $length > 0 ? fread($this->resource, $length) : false;
         /** @infection-ignore-all */
         if ($content === false) {
             return '';
