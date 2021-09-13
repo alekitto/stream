@@ -124,7 +124,8 @@ class ResourceStream implements Duplex
             return '';
         }
 
-        if ($this->seekable === false) {
+        $position = ftell($this->resource);
+        if ($this->seekable === false || $position === false) {
             $buffer = clone $this->buffer;
 
             if ($length <= $this->buffer->length()) {
@@ -143,7 +144,6 @@ class ResourceStream implements Duplex
             return $buffer->read($length);
         }
 
-        $position = ftell($this->resource);
         $content = fread($this->resource, $length);
         /** @infection-ignore-all */
         if ($content === false) {
