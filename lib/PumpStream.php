@@ -91,6 +91,20 @@ class PumpStream implements ReadableStream
         return $data;
     }
 
+    public function peek(int $length): string
+    {
+        $data = $this->buffer->peek($length);
+        $readLen = strlen($data);
+        $remaining = $length - $readLen;
+
+        if ($remaining) {
+            $this->pump($remaining);
+            $data .= $this->buffer->peek($remaining);
+        }
+
+        return $data;
+    }
+
     private function pump(int $length): void
     {
         if (! isset($this->source)) {

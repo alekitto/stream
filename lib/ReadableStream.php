@@ -22,6 +22,11 @@ interface ReadableStream extends Stream
     public function read(int $length): string;
 
     /**
+     * Reads bytes from the stream but do not advance stream pointer.
+     */
+    public function peek(int $length): string;
+
+    /**
      * Rewinds the stream.
      */
     public function rewind(): void;

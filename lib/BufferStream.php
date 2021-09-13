@@ -76,6 +76,16 @@ final class BufferStream implements Duplex
     }
 
     /**
+     * Reads bytes from the stream but do not advance stream pointer.
+     */
+    public function peek(int $length): string
+    {
+        $currentLength = strlen($this->buffer);
+
+        return $length >= $currentLength ? $this->buffer : substr($this->buffer, 0, $length);
+    }
+
+    /**
      * Writes data to the buffer.
      */
     public function write(string $chunk): void

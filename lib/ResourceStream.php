@@ -13,6 +13,7 @@ use function feof;
 use function filesize;
 use function fread;
 use function fseek;
+use function ftell;
 use function fwrite;
 use function get_debug_type;
 use function get_resource_type;
@@ -31,6 +32,7 @@ class ResourceStream implements Duplex
     private bool $writable;
     private bool $closed;
     private ?int $fileSize;
+    private BufferStream $buffer;
 
     /** @var resource */
     private $resource;
@@ -48,6 +50,7 @@ class ResourceStream implements Duplex
             throw new InvalidStreamProvidedException(sprintf('Invalid stream provided: expected stream resource, received resource of type %s', get_resource_type($resource)));
         }
 
+        $this->buffer = new BufferStream();
         $metadata = stream_get_meta_data($resource);
         $this->eof = feof($resource);
         $this->seekable = $metadata['seekable'];
@@ -91,13 +94,63 @@ class ResourceStream implements Duplex
             return '';
         }
 
+        if ($length <= $this->buffer->length()) {
+            return $this->buffer->read($length);
+        }
+
+        $remaining = $length - $this->buffer->length();
+        $content = fread($this->resource, $remaining);
+        /** @infection-ignore-all */
+        if ($content === false) {
+            return $this->buffer->read($length);
+        }
+
+        $this->eof = feof($this->resource);
+
+        return $this->buffer->read($length) . $content;
+    }
+
+    public function peek(int $length): string
+    {
+        if ($this->closed) {
+            throw new StreamClosedException('Trying to read a closed stream');
+        }
+
+        if (! $this->readable) {
+            throw new OperationException('Trying to read from a write-only stream');
+        }
+
+        if ($length <= 0) {
+            return '';
+        }
+
+        if ($this->seekable === false) {
+            $buffer = clone $this->buffer;
+
+            if ($length <= $this->buffer->length()) {
+                return $buffer->read($length);
+            }
+
+            $remaining = $length - $this->buffer->length();
+            $content = fread($this->resource, $remaining);
+            if ($content === false) {
+                return $buffer->read($length);
+            }
+
+            $this->buffer->write($content);
+            $buffer = clone $this->buffer;
+
+            return $buffer->read($length);
+        }
+
+        $position = ftell($this->resource);
         $content = fread($this->resource, $length);
         /** @infection-ignore-all */
         if ($content === false) {
             return '';
         }
 
-        $this->eof = feof($this->resource);
+        fseek($this->resource, $position);
 
         return $content;
     }
