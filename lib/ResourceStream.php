@@ -78,7 +78,7 @@ class ResourceStream implements Duplex
 
     public function eof(): bool
     {
-        return $this->eof;
+        return $this->buffer->eof() && $this->eof;
     }
 
     public function read(int $length): string
@@ -102,9 +102,10 @@ class ResourceStream implements Duplex
         $remaining = $length - $this->buffer->length();
 
         $content = '';
-        for (; $remaining > 0; $remaining -= 4096) {
+        for (; $remaining > 0 && ! $this->eof(); $remaining -= 4096) {
             $bytes = min($remaining, 4096);
             $chunk = fread($this->resource, $bytes);
+            $this->eof = feof($this->resource);
 
             /** @infection-ignore-all */
             if ($chunk === false) {
@@ -113,8 +114,6 @@ class ResourceStream implements Duplex
 
             $content .= $chunk;
         }
-
-        $this->eof = feof($this->resource);
 
         return $this->buffer->read($length) . $content;
     }
@@ -172,6 +171,8 @@ class ResourceStream implements Duplex
         }
 
         fseek($this->resource, 0, SEEK_SET);
+        $this->eof = feof($this->resource);
+        $this->buffer = new BufferStream();
     }
 
     public function isReadable(): bool
@@ -190,6 +191,7 @@ class ResourceStream implements Duplex
         }
 
         fwrite($this->resource, $chunk);
+        $this->eof = feof($this->resource);
     }
 
     public function isWritable(): bool
