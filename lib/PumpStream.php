@@ -64,7 +64,7 @@ class PumpStream implements ReadableStream
 
     public function eof(): bool
     {
-        return ! isset($this->source);
+        return ! isset($this->source) && $this->buffer->eof();
     }
 
     public function rewind(): void
