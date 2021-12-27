@@ -66,6 +66,16 @@ class ResourceStreamTest extends TestCase
         self::assertTrue($stream->eof());
     }
 
+    public function testShouldPeek(): void
+    {
+        $stream = new ResourceStream(fopen('data://text/plain,foobar', 'rb'));
+
+        self::assertEquals('', $stream->peek(0));
+        self::assertEquals('foo', $stream->peek(3));
+        self::assertEquals('foobar', $stream->peek(6));
+        self::assertEquals('foo', $stream->read(3));
+    }
+
     public function testShouldNotThrowTryingToRewindANonSeekableStream(): void
     {
         TestHttpServer::start();
@@ -126,5 +136,32 @@ class ResourceStreamTest extends TestCase
         $stream = new ResourceStream(fopen('php://temp', 'rb+'));
         $stream->close();
         $stream->read(1);
+    }
+
+    public function testCouldReadLongStreamInChunks(): void
+    {
+        $bytes = openssl_random_pseudo_bytes(6 * 1024);
+        if ($bytes === false) {
+            self::markTestSkipped('Cannot execute this test');
+        }
+
+        $r = fopen('php://temp', 'rb+');
+        fwrite($r, $bytes);
+        fseek($r, 0, SEEK_SET);
+
+        $stream = new ResourceStream($r);
+        self::assertEquals($bytes, $stream->read(PHP_INT_MAX));
+    }
+
+    public function testShouldSupportPeekOnNonSeekableStreams(): void
+    {
+        TestHttpServer::start();
+        $stream = new ResourceStream(fopen('http://localhost:8057/', 'rb'));
+
+        self::assertEquals('', $stream->peek(0));
+        self::assertEquals("{\n    \"SER", $stream->peek(10));
+
+        $stream->rewind();
+        self::assertEquals("{\n    \"SERVER_PROTOC", $stream->read(20));
     }
 }

@@ -134,25 +134,22 @@ class ResourceStream implements Duplex
 
         $position = ftell($this->resource);
         if ($this->seekable === false || $position === false) {
-            $buffer = clone $this->buffer;
-
             if ($length <= $this->buffer->length()) {
-                return $buffer->read($length);
+                return $this->buffer->peek($length);
             }
 
             $remaining = $length - $this->buffer->length();
             $content = fread($this->resource, $remaining);
             if ($content === false) {
-                return $buffer->read($length);
+                return $this->buffer->peek($length);
             }
 
             $this->buffer->write($content);
-            $buffer = clone $this->buffer;
 
-            return $buffer->read($length);
+            return $this->buffer->peek($length);
         }
 
-        $length = $position + $length >= $this->fileSize ? $this->fileSize - $position : $length;
+        $length = $this->fileSize !== null && $position + $length >= $this->fileSize ? $this->fileSize - $position : $length;
         $content = $length > 0 ? fread($this->resource, $length) : false;
         /** @infection-ignore-all */
         if ($content === false) {

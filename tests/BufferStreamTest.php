@@ -13,16 +13,20 @@ class BufferStreamTest extends TestCase
         $b = new BufferStream();
         self::assertTrue($b->isReadable());
         self::assertTrue($b->isWritable());
+        self::assertEquals(0, $b->length());
     }
 
     public function testRemovesReadDataFromBuffer(): void
     {
         $b = new BufferStream();
         $b->write('foo');
+        self::assertEquals(3, $b->length());
         self::assertFalse($b->eof());
         self::assertSame('foo', $b->read(10));
+        self::assertEquals(0, $b->length());
         self::assertTrue($b->eof());
         self::assertSame('', $b->read(10));
+        self::assertEquals(0, $b->length());
     }
 
     public function testCanCastToStringOrGetContents(): void
