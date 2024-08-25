@@ -30,7 +30,7 @@ final class BufferStream implements Duplex
         $this->buffer = '';
     }
 
-    public function length(): ?int
+    public function length(): int|null
     {
         return strlen($this->buffer);
     }
@@ -73,6 +73,20 @@ final class BufferStream implements Duplex
         }
 
         return $result;
+    }
+
+    public function pipe(WritableStream $destination): void
+    {
+        if ($destination instanceof self) {
+            $destination->buffer = $this->buffer;
+            $this->buffer = '';
+
+            return;
+        }
+
+        while (! $this->eof()) {
+            $destination->write($this->read(4096));
+        }
     }
 
     /**

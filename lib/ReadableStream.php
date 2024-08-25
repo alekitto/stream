@@ -14,12 +14,17 @@ interface ReadableStream extends Stream
     /**
      * The total length of the stream (if known).
      */
-    public function length(): ?int;
+    public function length(): int|null;
 
     /**
      * Reads bytes from the stream.
      */
     public function read(int $length): string;
+
+    /**
+     * Pipes the current stream into another (writable) stream.
+     */
+    public function pipe(WritableStream $destination): void;
 
     /**
      * Reads bytes from the stream but do not advance stream pointer.

@@ -8,6 +8,7 @@ use Kcs\Stream\Exception\InvalidStreamProvidedException;
 use Kcs\Stream\Exception\OperationException;
 use Kcs\Stream\Exception\StreamClosedException;
 
+use function assert;
 use function fclose;
 use function feof;
 use function filesize;
@@ -21,6 +22,7 @@ use function is_resource;
 use function min;
 use function preg_match;
 use function sprintf;
+use function stream_copy_to_stream;
 use function stream_get_meta_data;
 
 use const SEEK_SET;
@@ -32,16 +34,11 @@ class ResourceStream implements Duplex
     private bool $readable;
     private bool $writable;
     private bool $closed;
-    private ?int $fileSize;
+    private int|null $fileSize;
     private BufferStream $buffer;
 
-    /** @var resource */
-    private $resource;
-
-    /**
-     * @param resource $resource
-     */
-    public function __construct($resource)
+    /** @param resource $resource */
+    public function __construct(private $resource)
     {
         if (! is_resource($resource)) {
             throw new InvalidStreamProvidedException(sprintf('Invalid stream provided: expected stream resource, received %s', get_debug_type($resource)));
@@ -55,10 +52,10 @@ class ResourceStream implements Duplex
         $metadata = stream_get_meta_data($resource);
         $this->eof = feof($resource);
         $this->seekable = $metadata['seekable'];
-        $this->resource = $resource;
         $this->closed = false;
 
-        $size = @filesize($metadata['uri']);
+        $uri = $metadata['uri'] ?? '';
+        $size = @filesize($uri);
         $this->fileSize = $size === false ? null : $size;
 
         $this->readable = (bool) preg_match('/[r+]/', $metadata['mode']);
@@ -71,7 +68,7 @@ class ResourceStream implements Duplex
         $this->closed = true;
     }
 
-    public function length(): ?int
+    public function length(): int|null
     {
         return $this->fileSize;
     }
@@ -118,6 +115,22 @@ class ResourceStream implements Duplex
         return $this->buffer->read($length) . $content;
     }
 
+    public function pipe(WritableStream $destination): void
+    {
+        if ($destination instanceof self) {
+            $result = stream_copy_to_stream($this->resource, $destination->resource);
+            if ($result === false) {
+                throw new OperationException('Failed to copy stream');
+            }
+
+            return;
+        }
+
+        while (! $this->eof()) {
+            $destination->write($this->read(4096));
+        }
+    }
+
     public function peek(int $length): string
     {
         if ($this->closed) {
@@ -139,6 +152,8 @@ class ResourceStream implements Duplex
             }
 
             $remaining = $length - $this->buffer->length();
+            assert($remaining > 0);
+
             $content = fread($this->resource, $remaining);
             if ($content === false) {
                 return $this->buffer->peek($length);

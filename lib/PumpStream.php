@@ -24,7 +24,6 @@ class PumpStream implements ReadableStream
 {
     private Closure $source;
     private BufferStream $buffer;
-    private ?int $length;
 
     /**
      * @param callable $source Source of the stream data. The callable MAY
@@ -34,11 +33,10 @@ class PumpStream implements ReadableStream
      *                         or EOF.
      * @param int|null $length Set the total length of the stream, if known in advance.
      */
-    public function __construct(callable $source, ?int $length = null)
+    public function __construct(callable $source, private int|null $length = null)
     {
         $this->source = Closure::fromCallable($source);
         $this->buffer = new BufferStream();
-        $this->length = $length;
     }
 
     public function __toString(): string
@@ -57,7 +55,7 @@ class PumpStream implements ReadableStream
         unset($this->source);
     }
 
-    public function length(): ?int
+    public function length(): int|null
     {
         return $this->length;
     }
@@ -89,6 +87,13 @@ class PumpStream implements ReadableStream
         }
 
         return $data;
+    }
+
+    public function pipe(WritableStream $destination): void
+    {
+        while (! $this->eof()) {
+            $destination->write($this->read(4096));
+        }
     }
 
     public function peek(int $length): string
