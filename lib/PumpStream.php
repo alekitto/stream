@@ -10,6 +10,10 @@ use Kcs\Stream\Exception\OperationException;
 use function call_user_func;
 use function strlen;
 
+use const SEEK_CUR;
+use const SEEK_END;
+use const SEEK_SET;
+
 /**
  * Provides a read only stream that pumps data from a PHP callable.
  *
@@ -110,9 +114,17 @@ class PumpStream implements ReadableStream
         return $data;
     }
 
-    public function tell(): string|false
+    public function tell(): int|false
     {
         return false;
+    }
+
+    public function seek(int $position, int $whence = SEEK_SET): bool
+    {
+        return match ($whence) {
+            SEEK_SET, SEEK_END => false,
+            SEEK_CUR => $this->read($position) !== null,
+        };
     }
 
     private function pump(int $length): void

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Kcs\Stream;
 
+use const SEEK_SET;
+
 interface ReadableStream extends Stream
 {
     /**
@@ -34,7 +36,12 @@ interface ReadableStream extends Stream
     /**
      * If supported, returns the current position in the stream.
      */
-    public function tell(): string|false;
+    public function tell(): int|false;
+
+    /**
+     * If supported, move the current position of the stream to $offset
+     */
+    public function seek(int $position, int $whence = SEEK_SET): bool;
 
     /**
      * Rewinds the stream.

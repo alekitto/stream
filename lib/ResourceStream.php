@@ -176,13 +176,26 @@ class ResourceStream implements Duplex
         return $content;
     }
 
-    public function tell(): string|false
+    public function tell(): int|false
     {
         if ($this->closed) {
             throw new StreamClosedException('Trying to query a closed stream');
         }
 
         return ftell($this->resource);
+    }
+
+    public function seek(int $position, int $whence = SEEK_SET): bool
+    {
+        if ($this->closed) {
+            throw new StreamClosedException('Trying to seek a closed stream');
+        }
+
+        if ($position < 0) {
+            return false;
+        }
+
+        return fseek($this->resource, $position, $whence) === 0;
     }
 
     public function rewind(): void

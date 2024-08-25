@@ -9,6 +9,10 @@ use Kcs\Stream\Exception\OperationException;
 use function strlen;
 use function substr;
 
+use const SEEK_CUR;
+use const SEEK_END;
+use const SEEK_SET;
+
 /**
  * Provides a buffer stream that can be written to fill a buffer, and read
  * from to remove bytes from the buffer.
@@ -99,9 +103,17 @@ final class BufferStream implements Duplex
         return $length >= $currentLength ? $this->buffer : substr($this->buffer, 0, $length);
     }
 
-    public function tell(): string|false
+    public function tell(): int|false
     {
         return false;
+    }
+
+    public function seek(int $position, int $whence = SEEK_SET): bool
+    {
+        return match ($whence) {
+            SEEK_SET, SEEK_END => false,
+            SEEK_CUR => $this->read($position) !== null,
+        };
     }
 
     /**
