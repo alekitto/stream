@@ -110,6 +110,11 @@ class PumpStream implements ReadableStream
         return $data;
     }
 
+    public function tell(): string|false
+    {
+        return false;
+    }
+
     private function pump(int $length): void
     {
         if (! isset($this->source)) {

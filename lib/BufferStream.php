@@ -99,6 +99,11 @@ final class BufferStream implements Duplex
         return $length >= $currentLength ? $this->buffer : substr($this->buffer, 0, $length);
     }
 
+    public function tell(): string|false
+    {
+        return false;
+    }
+
     /**
      * Writes data to the buffer.
      */

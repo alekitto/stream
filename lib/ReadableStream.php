@@ -32,6 +32,11 @@ interface ReadableStream extends Stream
     public function peek(int $length): string;
 
     /**
+     * If supported, returns the current position in the stream.
+     */
+    public function tell(): string|false;
+
+    /**
      * Rewinds the stream.
      */
     public function rewind(): void;
