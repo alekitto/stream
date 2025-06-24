@@ -10,7 +10,6 @@ use function strlen;
 use function substr;
 
 use const SEEK_CUR;
-use const SEEK_END;
 use const SEEK_SET;
 
 /**
@@ -34,7 +33,7 @@ final class BufferStream implements Duplex
         $this->buffer = '';
     }
 
-    public function length(): int|null
+    public function length(): int
     {
         return strlen($this->buffer);
     }
@@ -110,10 +109,7 @@ final class BufferStream implements Duplex
 
     public function seek(int $position, int $whence = SEEK_SET): bool
     {
-        return match ($whence) {
-            SEEK_SET, SEEK_END => false,
-            SEEK_CUR => $this->read($position) !== null,
-        };
+        return $whence === SEEK_CUR && $this->read($position);
     }
 
     /**

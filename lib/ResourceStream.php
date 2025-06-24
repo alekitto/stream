@@ -54,7 +54,7 @@ class ResourceStream implements Duplex
         $this->seekable = $metadata['seekable'];
         $this->closed = false;
 
-        $uri = $metadata['uri'] ?? '';
+        $uri = $metadata['uri'];
         $size = @filesize($uri);
         $this->fileSize = $size === false ? null : $size;
 

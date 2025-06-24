@@ -11,7 +11,6 @@ use function call_user_func;
 use function strlen;
 
 use const SEEK_CUR;
-use const SEEK_END;
 use const SEEK_SET;
 
 /**
@@ -26,7 +25,7 @@ use const SEEK_SET;
  */
 class PumpStream implements ReadableStream
 {
-    private Closure $source;
+    private Closure|null $source;
     private BufferStream $buffer;
 
     /**
@@ -39,7 +38,7 @@ class PumpStream implements ReadableStream
      */
     public function __construct(callable $source, private int|null $length = null)
     {
-        $this->source = Closure::fromCallable($source);
+        $this->source = $source(...);
         $this->buffer = new BufferStream();
     }
 
@@ -56,7 +55,7 @@ class PumpStream implements ReadableStream
 
     public function close(): void
     {
-        unset($this->source);
+        $this->source = null;
     }
 
     public function length(): int|null
@@ -121,10 +120,7 @@ class PumpStream implements ReadableStream
 
     public function seek(int $position, int $whence = SEEK_SET): bool
     {
-        return match ($whence) {
-            SEEK_SET, SEEK_END => false,
-            SEEK_CUR => $this->read($position) !== null,
-        };
+        return $whence === SEEK_CUR && $this->read($position);
     }
 
     private function pump(int $length): void
