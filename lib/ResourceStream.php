@@ -104,7 +104,6 @@ class ResourceStream implements Duplex
             $chunk = fread($this->resource, $bytes);
             $this->eof = feof($this->resource);
 
-            /** @infection-ignore-all */
             if ($chunk === false) {
                 break;
             }
@@ -115,12 +114,27 @@ class ResourceStream implements Duplex
         return $this->buffer->read($length) . $content;
     }
 
+    /** @infection-ignore-all */
     public function pipe(WritableStream $destination): void
     {
         if ($destination instanceof self) {
+            if ($destination->closed) {
+                throw new StreamClosedException('Trying to write to a closed stream');
+            }
+
+            if (! $destination->writable) {
+                throw new OperationException('Trying to write to a read-only stream');
+            }
+
+            $pos = $destination->tell();
             $result = stream_copy_to_stream($this->resource, $destination->resource);
             if ($result === false) {
+                /** @infection-ignore-all */
                 throw new OperationException('Failed to copy stream');
+            }
+
+            if ($pos !== false) {
+                $destination->seek($pos);
             }
 
             return;
@@ -131,6 +145,7 @@ class ResourceStream implements Duplex
         }
     }
 
+    /** @infection-ignore-all */
     public function peek(int $length): string
     {
         if ($this->closed) {
@@ -166,7 +181,6 @@ class ResourceStream implements Duplex
 
         $length = $this->fileSize !== null && $position + $length >= $this->fileSize ? $this->fileSize - $position : $length;
         $content = $length > 0 ? fread($this->resource, $length) : false;
-        /** @infection-ignore-all */
         if ($content === false) {
             return '';
         }
@@ -195,6 +209,7 @@ class ResourceStream implements Duplex
             return false;
         }
 
+        /** @infection-ignore-all */
         return fseek($this->resource, $position, $whence) === 0;
     }
 

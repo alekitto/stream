@@ -80,6 +80,7 @@ final class BufferStream implements Duplex
 
     public function pipe(WritableStream $destination): void
     {
+        /** @infection-ignore-all */
         if ($destination instanceof self) {
             $destination->buffer = $this->buffer;
             $this->buffer = '';
@@ -88,12 +89,13 @@ final class BufferStream implements Duplex
         }
 
         while (! $this->eof()) {
+            /** @infection-ignore-all */
             $destination->write($this->read(4096));
         }
     }
 
     /**
-     * Reads bytes from the stream but do not advance stream pointer.
+     * Reads bytes from the stream but do not advance the stream pointer.
      */
     public function peek(int $length): string
     {

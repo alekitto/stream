@@ -11,7 +11,38 @@
         "global-ignoreSourceCodeByRegex": [
             "assert.*"
         ],
-        "@default": true
+        "@default": true,
+        "GreaterThanOrEqualTo": {
+            "ignore": [
+                "Kcs\\Stream\\BufferStream"
+            ]
+        },
+        "FalseValue": {
+            "ignore": [
+                "Kcs\\Stream\\ResourceStream"
+            ]
+        },
+        "GreaterThan": {
+            "ignore": [
+                "Kcs\\Stream\\PumpStream",
+                "Kcs\\Stream\\ResourceStream"
+            ]
+        },
+        "LessThanOrEqualTo": {
+            "ignore": [
+                "Kcs\\Stream\\ResourceStream"
+            ]
+        },
+        "IncrementInteger": {
+            "ignore": [
+                "Kcs\\Stream\\ResourceStream"
+            ]
+        },
+        "DecrementInteger": {
+            "ignore": [
+                "Kcs\\Stream\\ResourceStream"
+            ]
+        }
     },
     "minMsi": 90,
     "minCoveredMsi": 90

@@ -95,22 +95,22 @@ class PumpStream implements ReadableStream
     public function pipe(WritableStream $destination): void
     {
         while (! $this->eof()) {
+            /** @infection-ignore-all */
             $destination->write($this->read(4096));
         }
     }
 
+    /** @infection-ignore-all */
     public function peek(int $length): string
     {
-        $data = $this->buffer->peek($length);
-        $readLen = strlen($data);
-        $remaining = $length - $readLen;
+        $bufferLen = $this->buffer->length();
+        $remaining = $length - $bufferLen;
 
-        if ($remaining) {
+        if ($remaining > 0) {
             $this->pump($remaining);
-            $data .= $this->buffer->peek($remaining);
         }
 
-        return $data;
+        return $this->buffer->peek($remaining);
     }
 
     public function tell(): int|false

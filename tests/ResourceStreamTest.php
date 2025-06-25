@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Kcs\Stream\BufferStream;
 use Kcs\Stream\Exception\InvalidStreamProvidedException;
 use Kcs\Stream\Exception\OperationException;
 use Kcs\Stream\Exception\StreamClosedException;
@@ -12,9 +13,16 @@ use PHPUnit\Framework\TestCase;
 use stdClass;
 use Tests\Fixtures\TestHttpServer;
 
-use function curl_init;
+use function fseek;
+use function fwrite;
+use function openssl_random_pseudo_bytes;
+use function proc_open;
 use function Safe\fopen;
 use function sys_get_temp_dir;
+
+use const PHP_INT_MAX;
+use const PHP_OS;
+use const SEEK_SET;
 
 class ResourceStreamTest extends TestCase
 {
@@ -26,15 +34,12 @@ class ResourceStreamTest extends TestCase
         new ResourceStream(new stdClass());
     }
 
-    /**
-     * @requires PHP < 8.0
-     */
     public function testShouldThrowIfNotAStreamResource(): void
     {
         $this->expectException(InvalidStreamProvidedException::class);
-        $this->expectExceptionMessage('Invalid stream provided: expected stream resource, received resource of type curl');
+        $this->expectExceptionMessage('Invalid stream provided: expected stream resource, received resource of type process');
 
-        new ResourceStream(curl_init('http://localhost'));
+        new ResourceStream(proc_open(PHP_OS === 'Windows' ? 'cmd.exe' : '/bin/bash', [], $pipes));
     }
 
     public function testShouldAcceptAReadableStream(): void
@@ -44,6 +49,15 @@ class ResourceStreamTest extends TestCase
         self::assertTrue($stream->isReadable());
         self::assertFalse($stream->isWritable());
         self::assertFalse($stream->eof());
+    }
+
+    public function testShouldReturnFileLength(): void
+    {
+        $stream = new ResourceStream(fopen('data://text/plain,foobar', 'rb'));
+        self::assertNull($stream->length());
+
+        $stream = new ResourceStream(fopen(__FILE__, 'rb'));
+        self::assertNotNull($stream->length());
     }
 
     public function testShouldAcceptAWritableStream(): void
@@ -74,6 +88,26 @@ class ResourceStreamTest extends TestCase
         self::assertEquals('foo', $stream->peek(3));
         self::assertEquals('foobar', $stream->peek(6));
         self::assertEquals('foo', $stream->read(3));
+    }
+
+    public function testPeekShouldThrowOnClosedStream(): void
+    {
+        $this->expectException(StreamClosedException::class);
+        $this->expectExceptionMessage('Trying to read a closed stream');
+
+        $stream = new ResourceStream(fopen('data://text/plain,foobar', 'rb'));
+        $stream->close();
+
+        $stream->peek(1);
+    }
+
+    public function testPeekShouldThrowOnWriteOnlyStream(): void
+    {
+        $this->expectException(OperationException::class);
+        $this->expectExceptionMessage('Trying to read from a write-only stream');
+
+        $stream = new ResourceStream(fopen(sys_get_temp_dir() . '/test_file', 'cb'));
+        $stream->peek(1);
     }
 
     public function testShouldNotThrowTryingToRewindANonSeekableStream(): void
@@ -162,6 +196,84 @@ class ResourceStreamTest extends TestCase
         self::assertEquals("{\n    \"SER", $stream->peek(10));
 
         $stream->rewind();
-        self::assertEquals("{\n    \"SERVER_PROTOC", $stream->read(20));
+        self::assertEquals("{\n    ", $stream->read(6));
+        self::assertEquals('"SERVER_PROTOCOL": "', $stream->read(20));
+
+        // Read to end
+        $stream->read(PHP_INT_MAX);
+    }
+
+    public function testShouldSupportPipeToSelf(): void
+    {
+        TestHttpServer::start();
+        $stream = new ResourceStream(fopen('http://localhost:8057/', 'rb'));
+
+        $a = new ResourceStream(fopen('php://temp', 'rb+'));
+        $stream->pipe($a);
+
+        self::assertEquals("{\n", $a->peek(2));
+    }
+
+    public function testPipeShouldThrowIfOtherStreamIsNotWritable(): void
+    {
+        $this->expectException(OperationException::class);
+        $this->expectExceptionMessage('Trying to write to a read-only stream');
+
+        TestHttpServer::start();
+        $stream = new ResourceStream(fopen('http://localhost:8057/', 'rb'));
+
+        $a = new ResourceStream(fopen('php://temp', 'rb'));
+        $stream->pipe($a);
+    }
+
+    public function testPipeShouldThrowIfOtherStreamIsClosed(): void
+    {
+        $this->expectException(StreamClosedException::class);
+        $this->expectExceptionMessage('Trying to write to a closed stream');
+
+        TestHttpServer::start();
+        $stream = new ResourceStream(fopen('http://localhost:8057/', 'rb'));
+
+        $a = new ResourceStream(fopen('php://temp', 'rb'));
+        $a->close();
+        $stream->pipe($a);
+    }
+
+    public function testShouldSupportPipeToOtherStreams(): void
+    {
+        TestHttpServer::start();
+        $stream = new ResourceStream(fopen('http://localhost:8057/', 'rb'));
+
+        $a = new BufferStream();
+        $stream->pipe($a);
+
+        self::assertGreaterThan(0, $a->length());
+        self::assertEquals("{\n", $a->peek(2));
+    }
+
+    public function testTellShouldThrowIfOtherStreamIsClosed(): void
+    {
+        $this->expectException(StreamClosedException::class);
+        $this->expectExceptionMessage('Trying to query a closed stream');
+
+        $a = new ResourceStream(fopen('php://temp', 'rb'));
+        $a->close();
+        $a->tell();
+    }
+
+    public function testSeekShouldThrowIfOtherStreamIsClosed(): void
+    {
+        $this->expectException(StreamClosedException::class);
+        $this->expectExceptionMessage('Trying to seek a closed stream');
+
+        $a = new ResourceStream(fopen('php://temp', 'rb'));
+        $a->close();
+        self::assertTrue($a->seek(0));
+    }
+
+    public function testSeekShouldReturnFalseIfPositionIsLessThenZero(): void
+    {
+        $a = new ResourceStream(fopen('php://temp', 'rb'));
+        self::assertFalse($a->seek(-1));
     }
 }
